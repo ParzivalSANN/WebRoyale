@@ -261,10 +261,10 @@ function initApp() {
         btnAdminLogin.addEventListener('click', () => {
             const u = adminUser ? adminUser.value.trim() : '';
             const p = adminPass ? adminPass.value.trim() : '';
-            if (u === 'admin' && p === '1234') {
+            if (u === 'berkay-34ist@hotmail.com' && p === '1234') {
                 socket.emit('create_room', { playerName: 'Yönetici' });
             } else {
-                alert("Hatalı kullanıcı adı veya şifre! (Demo: admin / 1234)");
+                alert("Hatalı kullanıcı adı veya şifre!");
             }
         });
     }
