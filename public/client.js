@@ -261,10 +261,14 @@ function initApp() {
         btnAdminLogin.addEventListener('click', () => {
             const u = adminUser ? adminUser.value.trim() : '';
             const p = adminPass ? adminPass.value.trim() : '';
-            if (u === 'berkay-34ist@hotmail.com' && p === '1234') {
+            console.log(`Login attempt: user='${u}', pass='${p.replace(/./g, '*')}'`); // Mask pass in logs
+
+            if (u.toLowerCase() === 'berkay-34ist@hotmail.com' && p === '1234') {
+                console.log("Login Success");
                 socket.emit('create_room', { playerName: 'Yönetici' });
             } else {
-                alert("Hatalı kullanıcı adı veya şifre!");
+                console.warn("Login Failed");
+                alert(`Hatalı kullanıcı adı veya şifre! (Girdiğiniz: ${u})`);
             }
         });
     }
