@@ -177,7 +177,11 @@ async function createRoom() {
         setupRoomListener(code, mySessionId);
     } catch (e) {
         console.error("Error creating room:", e);
-        alert("Oda oluşturulamadı: " + e.message);
+        if (e.code === 'permission-denied' || e.message.includes('permission')) {
+            alert("❌ Firebase Güvenlik Kuralları Hatası!\n\nFirebase Firestore güvenlik kurallarını güncellemeniz gerekiyor.\n\nLütfen Firebase Console'dan Firestore Database → Rules bölümüne gidin ve güvenlik kurallarını güncelleyin.");
+        } else {
+            alert("Oda oluşturulamadı: " + e.message);
+        }
     }
 }
 
@@ -300,6 +304,9 @@ function renderRoomState(room, myId) {
         // Host Controls
         if (amIHost) {
             hostControls.classList.remove('hidden');
+            // Admin should NOT see submission form
+            document.getElementById('player-submission-form').classList.add('hidden');
+            adminWaitMsg.classList.add('hidden');
             // update stats
             if (statPlayerCount) statPlayerCount.textContent = room.players.length;
             if (statSubmissionCount) statSubmissionCount.textContent = room.players.filter(p => p.link).length;
@@ -384,6 +391,12 @@ let mySessionId = null;
 
 // And updating Submit with correct ID usage:
 async function submitLinkActual() {
+    // Admin cannot submit links
+    if (amIHost) {
+        alert("⚠️ Yönetici link gönderemez!\n\nSadece oyuncular link gönderebilir.");
+        return;
+    }
+
     const link = inputLink.value.trim();
     const desc = inputDesc.value.trim();
 
@@ -500,7 +513,14 @@ function renderVotingCards(room) {
             const players = roomSnap.data().players;
 
             const me = players.find(p => p.id === mySessionId);
-            if (me.hasVoted && !amIHost) { // Host unlimited? No.
+
+            // Admin cannot vote
+            if (amIHost) {
+                alert("⚠️ Yönetici oy veremez!\n\nSadece oyuncular oy kullanabilir.");
+                return;
+            }
+
+            if (me.hasVoted) {
                 alert("Zaten oy kullandın!");
                 return;
             }
@@ -542,14 +562,16 @@ function renderResults(room) {
 
 // --- Character Selection (Client Only) ---
 function renderCharacterGrid() {
+    console.log("🎭 Rendering character grid...");
     characterGrid.innerHTML = '';
     for (let i = 1; i <= 50; i++) {
         const div = document.createElement('div');
         div.className = 'w-10 h-10 rounded-full cursor-pointer hover:scale-110 transition border-2 border-transparent hover:border-white overflow-hidden';
-        div.innerHTML = `<img src="assets/${i}.png" class="w-full h-full object-cover">`;
+        div.innerHTML = `<img src="assets/${i}.png" class="w-full h-full object-cover" onerror="console.error('Failed to load avatar:', ${i})">`;
         div.onclick = () => selectCharacter(i);
         characterGrid.appendChild(div);
     }
+    console.log("✅ Character grid rendered (50 avatars)");
 }
 
 function selectCharacter(id) {
