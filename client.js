@@ -150,10 +150,10 @@ async function createRoom() {
             nickname: 'Yönetici',
             avatar: Math.floor(Math.random() * 50) + 1,
             isHost: true,
-            votesReceived: 0,
-            hasVoted: false,
             link: null,
-            description: null
+            description: null,
+            ratings: {},
+            votingComplete: false
         };
 
         const roomData = {
@@ -215,10 +215,10 @@ async function joinRoom(code) {
             nickname: `Oyuncu ${mySessionId.substr(0, 4)}`,
             avatar: myAvatarId,
             isHost: false,
-            votesReceived: 0,
-            hasVoted: false,
             link: null,
-            description: null
+            description: null,
+            ratings: {},
+            votingComplete: false
         };
 
         // Initialize user values locally
@@ -288,13 +288,18 @@ function renderRoomState(room, myId) {
 
     // Players List
     if (playersList) {
-        playersList.innerHTML = room.players.map(p => `
-            <div class="flex items-center gap-2 p-2 rounded-lg bg-white/5 border border-white/5">
-                <img src="assets/${p.avatar}.png" class="w-8 h-8 rounded-full">
-                <span class="text-sm text-slate-300">${p.nickname}</span>
-                ${p.isHost ? '<span class="ml-auto text-xs">👑</span>' : ''}
-            </div>
-        `).join('');
+        playersList.innerHTML = room.players.map(p => {
+            const votingCompleteClass = (room.status === 'voting' && p.votingComplete) ? 'border-green-500 border-2' : 'border-white/5';
+            const votingIndicator = (room.status === 'voting' && p.votingComplete) ? '<span class="ml-auto text-green-400">✅</span>' : '';
+
+            return `
+                <div class="flex items-center gap-2 p-2 rounded-lg bg-white/5 border ${votingCompleteClass} transition-all duration-300">
+                    <img src="assets/${p.avatar}.png" class="w-8 h-8 rounded-full">
+                    <span class="text-sm text-slate-300">${p.nickname}</span>
+                    ${p.isHost ? '<span class="ml-auto text-xs">👑</span>' : votingIndicator}
+                </div>
+            `;
+        }).join('');
     }
 
     // 2. Screen Switching based on Status
@@ -326,6 +331,18 @@ function renderRoomState(room, myId) {
     } else if (room.status === 'voting') {
         showScreen(votingScreen);
         renderVotingCards(room);
+
+        // Check if all non-host players completed voting
+        const voters = room.players.filter(p => !p.isHost);
+        const allComplete = voters.every(p => p.votingComplete);
+
+        if (allComplete && voters.length > 0) {
+            // All players finished voting - auto end
+            if (amIHost) {
+                console.log("✅ All players completed voting, auto-ending...");
+                setTimeout(() => endVoting(), 2000);
+            }
+        }
 
         if (amIHost) {
             // Host timer logic
@@ -473,20 +490,32 @@ function manageHostTimer(room) {
 }
 
 
+
+// Local state for ratings
+let myRatings = {};
+
 function renderVotingCards(room) {
     cardsGrid.innerHTML = '';
-    const candidates = room.players.filter(p => !p.isHost && p.link);
+    const candidates = room.players.filter(p => !p.isHost && p.link && p.id !== mySessionId);
+
+    if (candidates.length === 0) {
+        cardsGrid.innerHTML = '<div class="text-center text-slate-400 p-10">Henüz link gönderen oyuncu yok.</div>';
+        return;
+    }
+
+    // Get my current ratings from database
+    const me = room.players.find(p => p.id === mySessionId);
+    if (me && me.ratings) {
+        myRatings = { ...me.ratings };
+    }
 
     candidates.forEach(p => {
+        const currentRating = myRatings[p.id] || 5;
         const div = document.createElement('div');
         div.className = 'voting-card glass-card p-4 rounded-xl relative group hover:scale-105 transition duration-300';
         div.innerHTML = `
-            <div class="absolute -top-3 -right-3 bg-secondary text-black font-bold w-8 h-8 flex items-center justify-center rounded-full text-xs shadow-lg z-10">
-                ${p.votesReceived || 0}
-            </div>
-            <div class="h-40 bg-black/50 rounded-lg mb-3 overflow-hidden flex items-center justify-center">
+            <div class="h-40 bg-black/50 rounded-lg mb-3 overflow-hidden flex items-center justify-center relative">
                  <iframe src="${p.link}" class="w-full h-full pointer-events-none opacity-50 group-hover:opacity-100 transition"></iframe>
-                 <!-- Fallback/Overlay -->
                  <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
                     <span class="text-xs text-slate-400 bg-black/60 px-2 py-1 rounded">Önizleme</span>
                  </div>
@@ -496,63 +525,149 @@ function renderVotingCards(room) {
                  <p class="text-xs text-slate-400 line-clamp-2">${p.description || 'Açıklama yok'}</p>
                  <a href="${p.link}" target="_blank" class="text-[10px] text-blue-400 hover:underline block mt-1 truncate">${p.link}</a>
             </div>
-            <button class="btn-vote w-full py-2 rounded-lg bg-white/10 hover:bg-secondary hover:text-black transition text-sm font-bold border border-white/10"
-                data-id="${p.id}">
-                OY VER 🌟
-            </button>
+            <div class="rating-container bg-black/30 p-3 rounded-lg border border-white/10">
+                <div class="flex justify-between items-center mb-2">
+                    <label class="text-xs font-bold text-slate-300 uppercase">Puan</label>
+                    <span class="rating-display text-2xl font-bold text-secondary">${currentRating}</span>
+                </div>
+                <input type="range" min="1" max="10" value="${currentRating}" 
+                       class="rating-slider w-full accent-purple-500" 
+                       data-player-id="${p.id}">
+                <div class="flex justify-between text-[10px] text-slate-500 mt-1">
+                    <span>1</span>
+                    <span>10</span>
+                </div>
+            </div>
         `;
         cardsGrid.appendChild(div);
     });
 
-    // Add Vote Listeners
-    document.querySelectorAll('.btn-vote').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
-            const targetId = e.target.getAttribute('data-id');
-            const roomRef = doc(db, "rooms", myRoomCode);
-            const roomSnap = await getDoc(roomRef);
-            const players = roomSnap.data().players;
+    // Add slider listeners
+    document.querySelectorAll('.rating-slider').forEach(slider => {
+        slider.addEventListener('input', (e) => {
+            const playerId = e.target.getAttribute('data-player-id');
+            const value = parseInt(e.target.value);
+            myRatings[playerId] = value;
 
-            const me = players.find(p => p.id === mySessionId);
+            // Update display
+            const display = e.target.closest('.voting-card').querySelector('.rating-display');
+            display.textContent = value;
 
-            // Admin cannot vote
-            if (amIHost) {
-                alert("⚠️ Yönetici oy veremez!\n\nSadece oyuncular oy kullanabilir.");
-                return;
-            }
-
-            if (me.hasVoted) {
-                alert("Zaten oy kullandın!");
-                return;
-            }
-            if (targetId === mySessionId) {
-                alert("Kendine oy veremezsin!");
-                return;
-            }
-
-            const updatedPlayers = players.map(p => {
-                if (p.id === mySessionId) return { ...p, hasVoted: true };
-                if (p.id === targetId) return { ...p, votesReceived: (p.votesReceived || 0) + 1 };
-                return p;
-            });
-
-            await updateDoc(roomRef, { players: updatedPlayers });
-
-            // Visual feedback handled by render
+            updateRatingProgress(candidates.length);
         });
     });
+
+    // Add submit button if not admin
+    if (!amIHost) {
+        const submitDiv = document.createElement('div');
+        submitDiv.className = 'col-span-full mt-4';
+        submitDiv.innerHTML = `
+            <div class="glass-card p-6 text-center">
+                <p class="text-sm text-slate-300 mb-3">
+                    <span id="rated-count">${Object.keys(myRatings).length}</span> / 
+                    <span id="total-count">${candidates.length}</span> kişi puanlandı
+                </p>
+                <button id="btn-submit-ratings" 
+                        class="btn-neon py-3 px-8 rounded-xl text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                        ${Object.keys(myRatings).length < candidates.length ? 'disabled' : ''}>
+                    Puanları Gönder ✅
+                </button>
+            </div>
+        `;
+        cardsGrid.appendChild(submitDiv);
+
+        // Add submit listener
+        document.getElementById('btn-submit-ratings').addEventListener('click', submitRatings);
+    }
+
+    updateRatingProgress(candidates.length);
+}
+
+function updateRatingProgress(totalCandidates) {
+    const ratedCount = document.getElementById('rated-count');
+    const btn = document.getElementById('btn-submit-ratings');
+
+    if (ratedCount) {
+        ratedCount.textContent = Object.keys(myRatings).length;
+    }
+
+    if (btn) {
+        btn.disabled = Object.keys(myRatings).length < totalCandidates;
+    }
+}
+
+async function submitRatings() {
+    try {
+        // Admin check
+        if (amIHost) {
+            alert("⚠️ Yönetici puan veremez!");
+            return;
+        }
+
+        const roomRef = doc(db, "rooms", myRoomCode);
+        const roomSnap = await getDoc(roomRef);
+        const players = roomSnap.data().players;
+
+        // Validate all ratings are set
+        const candidates = players.filter(p => !p.isHost && p.link && p.id !== mySessionId);
+        if (Object.keys(myRatings).length < candidates.length) {
+            alert("Lütfen tüm katılımcıları puanlayın!");
+            return;
+        }
+
+        // Update player with ratings
+        const updatedPlayers = players.map(p => {
+            if (p.id === mySessionId) {
+                return {
+                    ...p,
+                    ratings: myRatings,
+                    votingComplete: true
+                };
+            }
+            return p;
+        });
+
+        await updateDoc(roomRef, { players: updatedPlayers });
+
+        // Visual feedback
+        alert("✅ Puanlar gönderildi! Diğer oyuncular bekleniyor...");
+
+    } catch (e) {
+        console.error("Rating submission error:", e);
+        alert("Hata: " + e.message);
+    }
 }
 
 function renderResults(room) {
     const candidates = room.players.filter(p => !p.isHost && p.link);
-    candidates.sort((a, b) => (b.votesReceived || 0) - (a.votesReceived || 0));
 
-    leaderboard.innerHTML = candidates.map((p, idx) => `
+    // Calculate total points for each candidate
+    const results = candidates.map(candidate => {
+        let totalPoints = 0;
+
+        // Sum all ratings received from other players
+        room.players.forEach(player => {
+            if (player.ratings && player.ratings[candidate.id]) {
+                totalPoints += player.ratings[candidate.id];
+            }
+        });
+
+        return {
+            ...candidate,
+            totalPoints
+        };
+    });
+
+    // Sort by total points (highest first)
+    results.sort((a, b) => b.totalPoints - a.totalPoints);
+
+    leaderboard.innerHTML = results.map((p, idx) => `
         <div class="flex items-center gap-4 p-4 glass-card rounded-xl border-l-4 ${idx === 0 ? 'border-yellow-400 bg-yellow-400/10' : 'border-white/10'} transform hover:scale-102 transition">
              <div class="text-2xl font-bold w-8 text-center ${idx === 0 ? 'text-yellow-400' : 'text-slate-500'}">#${idx + 1}</div>
              <img src="assets/${p.avatar}.png" class="w-12 h-12 rounded-full border border-white/20">
              <div class="flex-1 text-left">
                   <div class="font-bold text-lg">${p.nickname}</div>
-                  <div class="text-xs text-slate-400">${p.votesReceived} Oy</div>
+                  <div class="text-xs text-slate-400">${p.totalPoints} Toplam Puan</div>
              </div>
              <a href="${p.link}" target="_blank" class="text-2xl hover:scale-125 transition">🔗</a>
         </div>
