@@ -661,17 +661,83 @@ function renderResults(room) {
     // Sort by total points (highest first)
     results.sort((a, b) => b.totalPoints - a.totalPoints);
 
-    leaderboard.innerHTML = results.map((p, idx) => `
-        <div class="flex items-center gap-4 p-4 glass-card rounded-xl border-l-4 ${idx === 0 ? 'border-yellow-400 bg-yellow-400/10' : 'border-white/10'} transform hover:scale-102 transition">
-             <div class="text-2xl font-bold w-8 text-center ${idx === 0 ? 'text-yellow-400' : 'text-slate-500'}">#${idx + 1}</div>
-             <img src="assets/${p.avatar}.png" class="w-12 h-12 rounded-full border border-white/20">
-             <div class="flex-1 text-left">
-                  <div class="font-bold text-lg">${p.nickname}</div>
-                  <div class="text-xs text-slate-400">${p.totalPoints} Toplam Puan</div>
-             </div>
-             <a href="${p.link}" target="_blank" class="text-2xl hover:scale-125 transition">🔗</a>
-        </div>
-    `).join('');
+    // Clear leaderboard
+    leaderboard.innerHTML = '';
+
+    if (results.length === 0) {
+        leaderboard.innerHTML = '<div class="text-center text-slate-400 p-10">Hiç yarışmacı yok.</div>';
+        return;
+    }
+
+    // Top 3 Podium
+    const top3 = results.slice(0, 3);
+    if (top3.length > 0) {
+        const podiumDiv = document.createElement('div');
+        podiumDiv.className = 'podium-container mb-8';
+
+        // Podium order: 2nd, 1st, 3rd (left, center, right)
+        const podiumOrder = top3.length >= 2 ? [top3[1], top3[0], top3[2]].filter(Boolean) : [top3[0]];
+        const podiumHeights = ['h-48', 'h-64', 'h-40']; // 2nd, 1st, 3rd heights
+        const podiumColors = ['from-slate-400 to-slate-500', 'from-yellow-400 to-yellow-500', 'from-orange-400 to-orange-500'];
+        const badgeColors = ['bg-slate-400', 'bg-yellow-400', 'bg-orange-400'];
+        const ranks = top3.length >= 2 ? [2, 1, 3] : [1];
+
+        podiumDiv.innerHTML = `
+            <div class="flex items-end justify-center gap-4 mb-2">
+                ${podiumOrder.map((player, idx) => {
+            if (!player) return '';
+            const actualRank = ranks[idx];
+            const rankIdx = actualRank === 1 ? 0 : actualRank === 2 ? 0 : 1;
+
+            return `
+                        <div class="podium-stand flex flex-col items-center" style="flex: 0 0 auto;">
+                            <div class="mb-2 relative">
+                                <img src="assets/${player.avatar}.png" 
+                                     class="w-20 h-20 md:w-24 md:h-24 rounded-full border-4 ${actualRank === 1 ? 'border-yellow-400' : actualRank === 2 ? 'border-slate-400' : 'border-orange-400'} shadow-lg transform hover:scale-110 transition">
+                                <div class="absolute -top-2 -right-2 ${badgeColors[actualRank === 1 ? 1 : actualRank === 2 ? 0 : 2]} text-white font-bold w-10 h-10 rounded-full flex items-center justify-center text-xl shadow-lg">
+                                    ${actualRank}
+                                </div>
+                            </div>
+                            <div class="text-center mb-2">
+                                <div class="font-bold text-white text-sm md:text-base">${player.nickname}</div>
+                                <div class="text-xs md:text-sm ${actualRank === 1 ? 'text-yellow-400' : actualRank === 2 ? 'text-slate-300' : 'text-orange-400'} font-bold">
+                                    ${player.totalPoints} puan
+                                </div>
+                            </div>
+                            <div class="${podiumHeights[idx]} w-24 md:w-32 bg-gradient-to-b ${podiumColors[actualRank === 1 ? 1 : actualRank === 2 ? 0 : 2]} rounded-t-xl shadow-lg flex items-center justify-center">
+                                <span class="text-white text-4xl md:text-6xl font-bold opacity-30">${actualRank}</span>
+                            </div>
+                        </div>
+                    `;
+        }).join('')}
+            </div>
+        `;
+        leaderboard.appendChild(podiumDiv);
+    }
+
+    // Remaining players (4th and below)
+    const remaining = results.slice(3);
+    if (remaining.length > 0) {
+        const remainingDiv = document.createElement('div');
+        remainingDiv.className = 'remaining-players';
+        remainingDiv.innerHTML = `
+            <h3 class="text-xl font-bold text-slate-300 mb-4 text-center">Diğer Yarışmacılar</h3>
+            <div class="space-y-2 max-h-64 overflow-y-auto pr-2 scrollbar-custom">
+                ${remaining.map((p, idx) => `
+                    <div class="flex items-center gap-4 p-3 glass-card rounded-lg border border-white/10 hover:border-white/20 transition">
+                        <div class="text-lg font-bold text-slate-400 w-8 text-center">#${idx + 4}</div>
+                        <img src="assets/${p.avatar}.png" class="w-10 h-10 rounded-full border border-white/20">
+                        <div class="flex-1">
+                            <div class="font-bold text-white text-sm">${p.nickname}</div>
+                            <div class="text-xs text-slate-400">${p.totalPoints} puan</div>
+                        </div>
+                        <a href="${p.link}" target="_blank" class="text-xl hover:scale-125 transition">🔗</a>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+        leaderboard.appendChild(remainingDiv);
+    }
 }
 
 
