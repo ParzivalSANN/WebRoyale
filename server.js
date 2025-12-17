@@ -3,7 +3,13 @@ const app = express();
 const http = require('http');
 const server = http.createServer(app);
 const { Server } = require("socket.io");
-const io = new Server(server);
+const io = new Server(server, {
+    cors: {
+        origin: "*", // Allow all origins for Vercel
+        methods: ["GET", "POST"]
+    },
+    transports: ['polling', 'websocket']
+});
 const path = require('path');
 const fs = require('fs');
 const axios = require('axios');
