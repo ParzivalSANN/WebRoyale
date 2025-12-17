@@ -562,6 +562,22 @@ function renderAllSubmissions(candidates) {
 
     cardsGrid.appendChild(listContainer);
 
+    // Generate dynamic QR code for room join URL
+    const joinURL = `${window.location.origin}${window.location.pathname}?join=${myRoomCode}`;
+    const qrContainer = document.getElementById('qrcode-container');
+    if (qrContainer) { // Check if container exists, as this might be rendered in different contexts
+        qrContainer.innerHTML = '<div id="qrcode" class="inline-block bg-white p-3 rounded-lg shadow-lg"></div>';
+
+        new QRCode(document.getElementById("qrcode"), {
+            text: joinURL,
+            width: 200,
+            height: 200,
+            colorDark: "#000000",
+            colorLight: "#ffffff",
+            correctLevel: QRCode.CorrectLevel.H
+        });
+    }
+
     // Add end voting button listener
     document.getElementById('btn-end-voting').addEventListener('click', async () => {
         if (confirm('Yarışmayı bitirmek istediğinizden emin misiniz?')) {
@@ -665,21 +681,36 @@ function renderSequentialVoting(candidates) {
         display.textContent = rating;
     });
 
-    // Add next button listener
-    document.getElementById('btn-next-submission').addEventListener('click', (e) => {
-        // Get the current rating from slider's data attribute
-        const slider = document.getElementById('sequential-rating-slider');
-        const currentRating = parseInt(slider.getAttribute('data-current-rating'));
-        const candidateId = e.target.getAttribute('data-candidate-id');
+    // Add next button listener with debugging
+    const nextButton = document.getElementById('btn-next-submission');
+    if (nextButton) {
+        console.log('✅ Next button found, adding listener...');
+        nextButton.addEventListener('click', (e) => {
+            console.log('🔘 Next button clicked!');
 
-        // Save rating for this candidate
-        myRatings[candidateId] = currentRating;
+            // Get the current rating from slider's data attribute
+            const slider = document.getElementById('sequential-rating-slider');
+            const currentRating = parseInt(slider.getAttribute('data-current-rating'));
+            const candidateId = e.target.getAttribute('data-candidate-id');
 
-        // Re-render to show next submission using stored room state
-        if (currentRoom) {
-            renderVotingCards(currentRoom);
-        }
-    });
+            console.log(`Saving rating: ${currentRating} for candidate: ${candidateId}`);
+
+            // Save rating for this candidate
+            myRatings[candidateId] = currentRating;
+
+            console.log('Current ratings:', myRatings);
+
+            // Re-render to show next submission using stored room state
+            if (currentRoom) {
+                console.log('Rendering next submission...');
+                renderVotingCards(currentRoom);
+            } else {
+                console.error('❌ currentRoom is null!');
+            }
+        });
+    } else {
+        console.error('❌ Next button not found!');
+    }
 }
 
 function updateRatingProgress(totalCandidates) {
