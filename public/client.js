@@ -261,14 +261,21 @@ function initApp() {
         btnAdminLogin.addEventListener('click', () => {
             const u = adminUser ? adminUser.value.trim() : '';
             const p = adminPass ? adminPass.value.trim() : '';
-            console.log(`Login attempt: user='${u}', pass='${p.replace(/./g, '*')}'`); // Mask pass in logs
 
-            if (u.toLowerCase() === 'berkay-34ist@hotmail.com' && p === '1234') {
+            // Allow both custom mail and generic 'admin'
+            const validUser = (u.toLowerCase() === 'berkay-34ist@hotmail.com' || u === 'admin');
+            const validPass = (p === '1234');
+
+            if (validUser && validPass) {
                 console.log("Login Success");
                 socket.emit('create_room', { playerName: 'Yönetici' });
             } else {
                 console.warn("Login Failed");
-                alert(`Hatalı kullanıcı adı veya şifre! (Girdiğiniz: ${u})`);
+                // Debug Info
+                let debugMsg = `Girdiğiniz: '${u}' (Uzunluk: ${u.length})\n`;
+                debugMsg += `Şifre: '${p}' (Uzunluk: ${p.length})\n`;
+                debugMsg += `Beklenen: 'berkay-34ist@hotmail.com' veya 'admin'`;
+                alert(`Hatalı kullanıcı adı veya şifre!\n\n${debugMsg}`);
             }
         });
     }
