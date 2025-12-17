@@ -523,74 +523,51 @@ function renderVotingCards(room) {
 }
 
 function renderAllSubmissions(candidates) {
-    // Admin sees all submissions with sliders (old multi-card view)
-    candidates.forEach(p => {
-        const currentRating = myRatings[p.id] || 5;
-        const div = document.createElement('div');
-        div.className = 'voting-card glass-card p-4 rounded-xl relative group hover:scale-105 transition duration-300';
-        div.innerHTML = `
-            <div class="h-40 bg-black/50 rounded-lg mb-3 overflow-hidden flex items-center justify-center relative">
-                 <iframe src="${p.link}" class="w-full h-full pointer-events-none opacity-50 group-hover:opacity-100 transition"></iframe>
-                 <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <span class="text-xs text-slate-400 bg-black/60 px-2 py-1 rounded">Önizleme</span>
-                 </div>
-            </div>
-            <div class="mb-3">
-                 <h4 class="font-bold text-white truncate">${p.nickname}</h4>
-                 <p class="text-xs text-slate-400 line-clamp-2">${p.description || 'Açıklama yok'}</p>
-                 <a href="${p.link}" target="_blank" class="text-[10px] text-blue-400 hover:underline block mt-1 truncate">${p.link}</a>
-            </div>
-            <div class="rating-container bg-black/30 p-3 rounded-lg border border-white/10">
-                <div class="flex justify-between items-center mb-2">
-                    <label class="text-xs font-bold text-slate-300 uppercase">Puan</label>
-                    <span class="rating-display text-2xl font-bold text-secondary">${currentRating}</span>
+    // Moderator sees simple list of submissions + End Race button
+    const listContainer = document.createElement('div');
+    listContainer.className = 'max-w-3xl mx-auto';
+
+    listContainer.innerHTML = `
+        <div class="glass-card p-6 rounded-xl mb-4">
+            <h3 class="text-2xl font-bold text-center mb-2 text-gradient">📋 Gönderilen Siteler</h3>
+            <p class="text-center text-slate-400 text-sm mb-4">Moderatör olarak siteleri görüntüleyebilirsiniz</p>
+        </div>
+
+        <div class="space-y-3 mb-6">
+            ${candidates.map((p, idx) => `
+                <div class="glass-card p-4 rounded-lg flex items-center gap-4 hover:border-purple-500 transition">
+                    <div class="text-2xl font-bold text-slate-500 w-8">${idx + 1}</div>
+                    <img src="assets/${p.avatar}.png" class="w-12 h-12 rounded-full border-2 border-white/20">
+                    <div class="flex-1">
+                        <div class="font-bold text-white">${p.nickname}</div>
+                        <p class="text-xs text-slate-400 line-clamp-1">${p.description || 'Açıklama yok'}</p>
+                    </div>
+                    <a href="${p.link}" target="_blank" class="btn-neon py-2 px-4 rounded-lg text-sm whitespace-nowrap">
+                        Siteyi Aç 🔗
+                    </a>
                 </div>
-                <input type="range" min="1" max="10" value="${currentRating}" 
-                       class="rating-slider w-full accent-purple-500" 
-                       data-player-id="${p.id}">
-                <div class="flex justify-between text-[10px] text-slate-500 mt-1">
-                    <span>1</span>
-                    <span>10</span>
-                </div>
-            </div>
-        `;
-        cardsGrid.appendChild(div);
-    });
+            `).join('')}
+        </div>
 
-    // Add slider listeners
-    document.querySelectorAll('.rating-slider').forEach(slider => {
-        slider.addEventListener('input', (e) => {
-            const playerId = e.target.getAttribute('data-player-id');
-            const value = parseInt(e.target.value);
-            myRatings[playerId] = value;
-
-            const display = e.target.closest('.voting-card').querySelector('.rating-display');
-            display.textContent = value;
-
-            updateRatingProgress(candidates.length);
-        });
-    });
-
-    // Add submit button for admin
-    const submitDiv = document.createElement('div');
-    submitDiv.className = 'col-span-full mt-4';
-    submitDiv.innerHTML = `
-        <div class="glass-card p-6 text-center">
-            <p class="text-sm text-slate-300 mb-3">
-                <span id="rated-count">${Object.keys(myRatings).length}</span> / 
-                <span id="total-count">${candidates.length}</span> kişi puanlandı
+        <div class="glass-card p-6 rounded-xl text-center">
+            <p class="text-slate-300 mb-4">
+                <span class="font-bold text-secondary">${candidates.length}</span> site gönderildi
             </p>
-            <button id="btn-submit-ratings" 
-                    class="btn-neon py-3 px-8 rounded-xl text-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                    ${Object.keys(myRatings).length < candidates.length ? 'disabled' : ''}>
-                Puanları Gönder ✅
+            <button id="btn-end-voting" class="btn-neon py-4 px-8 rounded-xl text-lg font-bold w-full">
+                ⏹ Yarışmayı Bitir
             </button>
+            <p class="text-xs text-slate-400 mt-2">Oyuncular puanlama yaparken bitirirseniz, mevcut puanlar sayılır</p>
         </div>
     `;
-    cardsGrid.appendChild(submitDiv);
-    document.getElementById('btn-submit-ratings').addEventListener('click', submitRatings);
 
-    updateRatingProgress(candidates.length);
+    cardsGrid.appendChild(listContainer);
+
+    // Add end voting button listener
+    document.getElementById('btn-end-voting').addEventListener('click', async () => {
+        if (confirm('Yarışmayı bitirmek istediğinizden emin misiniz?')) {
+            await endVoting();
+        }
+    });
 }
 
 function renderSequentialVoting(candidates) {
@@ -599,23 +576,26 @@ function renderSequentialVoting(candidates) {
     const unratedCandidates = candidates.filter(c => !myRatings[c.id]);
 
     if (unratedCandidates.length === 0) {
-        // All rated - show completion screen and auto-submit
+        // All rated - show waiting screen
         cardsGrid.innerHTML = `
-            <div class="col-span-full text-center p-10 glass-card rounded-xl">
+            <div class="col-span-full text-center p-10 glass-card rounded-xl max-w-2xl mx-auto">
                 <div class="text-6xl mb-4">✅</div>
                 <h3 class="text-2xl font-bold text-green-400 mb-2">Tüm Siteleri Puanladınız!</h3>
-                <p class="text-slate-300 mb-4">Puanlarınız kaydediliyor...</p>
+                <p class="text-slate-300 mb-4">Diğer oyuncuların bitmesini bekleyin...</p>
                 <div class="text-sm text-slate-400">${Object.keys(myRatings).length} / ${candidates.length} site puanlandı</div>
+                <div class="mt-6">
+                    <div class="animate-pulse text-secondary text-xl">⏳ Bekleniyor...</div>
+                </div>
             </div>
         `;
-        // Auto-submit
-        setTimeout(() => submitRatings(), 1000);
+
+        // Submit ratings
+        submitRatings();
         return;
     }
 
     // Show first unrated submission
     const currentCandidate = unratedCandidates[0];
-    let currentRating = 5; // Default rating
 
     const wrapper = document.createElement('div');
     wrapper.className = 'sequential-voting-wrapper col-span-full max-w-2xl mx-auto';
@@ -659,15 +639,16 @@ function renderSequentialVoting(candidates) {
                 </div>
                 <input type="range" min="1" max="10" value="5" 
                        id="sequential-rating-slider"
-                       class="rating-slider w-full accent-purple-500">
+                       class="rating-slider w-full accent-purple-500"
+                       data-current-rating="5">
                 <div class="flex justify-between text-xs text-slate-500 mt-2">
                     <span>1 - Kötü</span>
                     <span>10 - Mükemmel</span>
                 </div>
             </div>
 
-            <button id="btn-next-submission" class="btn-neon w-full py-4 rounded-xl text-lg font-bold">
-                Sonraki Siteye Geç ➡️
+            <button id="btn-next-submission" class="btn-neon w-full py-4 rounded-xl text-lg font-bold" data-candidate-id="${currentCandidate.id}">
+                ${unratedCandidates.length === 1 ? 'Bitir ✅' : 'Sonraki Siteye Geç ➡️'}
             </button>
         </div>
     `;
@@ -679,14 +660,20 @@ function renderSequentialVoting(candidates) {
     const display = document.getElementById('current-rating-display');
 
     slider.addEventListener('input', (e) => {
-        currentRating = parseInt(e.target.value);
-        display.textContent = currentRating;
+        const rating = parseInt(e.target.value);
+        e.target.setAttribute('data-current-rating', rating);
+        display.textContent = rating;
     });
 
     // Add next button listener
-    document.getElementById('btn-next-submission').addEventListener('click', () => {
+    document.getElementById('btn-next-submission').addEventListener('click', (e) => {
+        // Get the current rating from slider's data attribute
+        const slider = document.getElementById('sequential-rating-slider');
+        const currentRating = parseInt(slider.getAttribute('data-current-rating'));
+        const candidateId = e.target.getAttribute('data-candidate-id');
+
         // Save rating for this candidate
-        myRatings[currentCandidate.id] = currentRating;
+        myRatings[candidateId] = currentRating;
 
         // Re-render to show next submission using stored room state
         if (currentRoom) {
