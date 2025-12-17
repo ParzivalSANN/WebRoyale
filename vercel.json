@@ -1,6 +1,10 @@
 {
     "rewrites": [
         {
+            "source": "/(.*\\.js|.*\\.css|assets/.*)",
+            "destination": "/$1"
+        },
+        {
             "source": "/(.*)",
             "destination": "/server.js"
         }
