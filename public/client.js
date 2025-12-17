@@ -1,7 +1,7 @@
 const socket = io({
-    transports: ['polling', 'websocket'],
-    reconnectionAttempts: 5,
-    timeout: 10000
+    transports: ['websocket'], // Force WebSocket to avoid Vercel polling issues
+    reconnectionAttempts: 10,
+    timeout: 20000
 });
 
 // --- Global State ---
