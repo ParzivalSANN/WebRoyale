@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>WebRoyale</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: #0f172a;
+        }
+
+        .glass-card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="text-white h-screen flex overflow-hidden">
+
+    <!-- SIDEBAR -->
+    <aside id="sidebar" class="hidden w-72 glass-panel flex flex-col p-4 transition-transform z-50">
+        <div class="flex justify-between items-center mb-6 pb-2 border-b border-white/10">
+            <h3 class="font-bold text-xl text-secondary">👥 Lobi</h3>
+            <span id="player-count-badge" class="bg-white/10 px-2 py-1 rounded text-xs border border-white/20">0
+                Kişi</span>
+        </div>
+
+        <div id="my-profile-sidebar" class="flex items-center gap-3 glass-card p-3 mb-4">
+            <!-- Injected -->
+        </div>
+
+        <div id="players-list" class="flex-1 overflow-y-auto space-y-2">
+            <!-- List -->
+        </div>
+
+        <div
+            class="mt-4 bg-black/40 p-4 rounded-xl text-center border border-white/10 flex flex-col items-center justify-center backdrop-blur-sm">
+            <small class="text-slate-400 text-xs tracking-widest mb-2">ODA KODU & QR</small>
+            <div id="qrcode" class="bg-white p-2 rounded-lg mb-2 shadow-lg"></div>
+            <h1 id="display-room-code" class="text-3xl font-bold text-white tracking-[0.2em] drop-shadow-neon">----</h1>
+        </div>
+    </aside>
+
+    <!-- CONTENT -->
+    <main class="flex-1 relative flex items-center justify-center p-4">
+
+        <!-- LOGIN SCREEN -->
+        <section id="login-screen" class="w-full max-w-md animate-fadeIn">
+            <div class="glass-card p-10 text-center relative overflow-hidden">
+                <div class="absolute -top-10 -left-10 w-40 h-40 bg-purple-500 rounded-full blur-[50px] opacity-30">
+                </div>
+                <div class="absolute -bottom-10 -right-10 w-40 h-40 bg-blue-500 rounded-full blur-[50px] opacity-30">
+                </div>
+
+                <h1
+                    class="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-300 to-cyan-300 mb-2 drop-shadow-lg scale-110 animate-float">
+                    WebRoyale</h1>
+                <p class="text-slate-300 mb-8 text-sm tracking-widest font-light">REKABETİN YENİ ADRESİ</p>
+
+                <div class="mb-6 text-left">
+                    <label class="block text-xs font-bold text-slate-400 uppercase mb-2 ml-1">Oda Kodu</label>
+                    <input type="text" id="input-room-code" placeholder="CODE" maxlength="4"
+                        class="w-full bg-black/20 text-center text-4xl tracking-[0.5em] text-white p-4 rounded-xl border border-white/10 focus:border-secondary focus:outline-none transition placeholder-white/10 uppercase font-mono">
+                </div>
+
+                <div class="mb-8">
+                    <div class="flex items-center justify-between mb-3">
+                        <label class="block text-xs font-bold text-slate-400 uppercase">Karakter Seç</label>
+                        <button id="btn-random-character"
+                            class="text-xs bg-white/10 hover:bg-white/20 px-3 py-1 rounded-lg transition border border-white/10">
+                            🎲 Rastgele
+                        </button>
+                    </div>
+
+                    <!-- Character Grid -->
+                    <div id="character-grid"
+                        class="character-grid bg-black/20 border border-dashed border-white/20 rounded-2xl">
+                        <!-- Grid will be populated by JavaScript -->
+                    </div>
+
+                    <!-- Selected Character Display -->
+                    <div id="selected-character-display"
+                        class="mt-4 p-3 bg-black/30 rounded-xl border border-white/10 hidden">
+                        <div class="flex items-center justify-center gap-3">
+                            <img id="selected-avatar-img" src=""
+                                class="w-12 h-12 rounded-full border-2 border-purple-400">
+                            <div class="text-left">
+                                <div class="text-xs text-slate-400">Seçilen Karakter</div>
+                                <div id="selected-character-name" class="font-bold text-purple-400">-</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <button id="btn-join-room" disabled
+                    class="w-full btn-neon btn-ripple py-4 rounded-xl text-lg tracking-wider disabled:opacity-50 disabled:cursor-not-allowed transition shadow-lg">
+                    ODAYA KATIL 🚀
+                </button>
+
+                <div class="mt-6">
+                    <button id="link-admin-login"
+                        class="text-xs text-slate-400 hover:text-white underline decoration-dotted transition">Yönetici
+                        Girişi</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ADMIN LOGIN -->
+        <section id="admin-login-screen" class="hidden w-full max-w-md">
+            <div class="glass-card p-8">
+                <h2 class="text-3xl font-bold text-white text-center mb-6 drop-shadow-md">Yönetici Paneli</h2>
+                <input type="text" id="admin-user" placeholder="Kullanıcı Adı"
+                    class="w-full bg-black/20 text-white p-4 rounded-lg border border-white/10 mb-4 focus:outline-none focus:border-secondary transition">
+                <input type="password" id="admin-pass" placeholder="Şifre"
+                    class="w-full bg-black/20 text-white p-4 rounded-lg border border-white/10 mb-6 focus:outline-none focus:border-secondary transition">
+                <button id="btn-admin-login" class="w-full btn-neon py-3 rounded-xl shadow-lg">Giriş Yap & Oda Kur
+                    👑</button>
+                <button id="link-player-login" class="w-full mt-4 text-slate-400 text-sm hover:text-white transition">←
+                    Geri Dön</button>
+            </div>
+        </section>
+
+        <!-- LOBBY / SUBMISSION -->
+        <section id="submission-screen" class="hidden w-full max-w-2xl">
+
+            <!-- ADMIN DASHBOARD -->
+            <div id="host-controls" class="hidden mb-6 animate-slideIn">
+
+                <!-- Stat Cards -->
+                <div class="grid grid-cols-3 gap-3 mb-4">
+                    <div class="stat-card">
+                        <div class="text-2xl mb-1">👥</div>
+                        <div id="stat-player-count" class="stat-value">0</div>
+                        <div class="stat-label">Oyuncu</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="text-2xl mb-1">📨</div>
+                        <div id="stat-submission-count" class="stat-value">0</div>
+                        <div class="stat-label">Gönderim</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="text-2xl mb-1">⏱️</div>
+                        <div id="stat-timer" class="stat-value">60</div>
+                        <div class="stat-label">Süre (sn)</div>
+                    </div>
+                </div>
+
+                <!-- Control Panel -->
+                <div class="glass-card p-6 relative overflow-hidden">
+                    <div class="absolute -top-10 -right-10 w-32 h-32 bg-secondary/20 rounded-full blur-2xl"></div>
+                    <h3 class="text-xl font-bold text-secondary mb-4 flex items-center gap-2 drop-shadow">
+                        👑 Yönetici Kontrolü
+                    </h3>
+
+                    <div class="mb-4">
+                        <div class="flex justify-between items-center mb-2">
+                            <label class="block text-xs text-slate-300 font-bold uppercase">Oylama Süresi</label>
+                            <span id="duration-value" class="text-sm font-bold text-secondary">60 Saniye</span>
+                        </div>
+                        <input type="range" id="input-duration" min="10" max="300" value="60" step="10"
+                            class="w-full accent-purple-500">
+                    </div>
+
+                    <div class="flex gap-2">
+                        <button id="btn-start-voting"
+                            class="flex-1 btn-ripple bg-gradient-to-r from-green-600 to-green-500 hover:from-green-500 hover:to-green-400 text-white font-bold py-3 px-6 rounded-xl transition shadow-lg border border-white/20 text-lg">
+                            ▶ Oylamayı Başlat
+                        </button>
+                        <button id="btn-force-end"
+                            class="hidden flex-1 btn-ripple bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white font-bold py-3 px-6 rounded-xl transition shadow-lg border border-white/20 text-lg">
+                            ⏹ Oylamayı Bitir
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PLAYER SUBMISSION FORM -->
+            <div id="player-submission-form" class="glass-card p-6 relative">
+                <h2 class="text-3xl font-bold text-white mb-1 drop-shadow-md">Link Gönder 📨</h2>
+                <p class="text-slate-400 text-sm mb-6">En iyi içeriği paylaş ve kazan!</p>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Web Sitesi</label>
+                        <input type="url" id="input-link" placeholder="https://"
+                            class="w-full bg-black/20 border border-white/10 rounded-lg p-3 text-white focus:border-secondary focus:outline-none transition">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Açıklama</label>
+                        <textarea id="input-desc" rows="2" placeholder="Nedir bu?"
+                            class="w-full bg-black/20 border border-white/10 rounded-lg p-3 text-white focus:border-secondary focus:outline-none transition"></textarea>
+                    </div>
+
+                    <button id="btn-submit-link" class="w-full btn-neon py-3 rounded-lg shadow-lg">
+                        GÖNDER 🚀
+                    </button>
+                    <p id="submission-status" class="text-center text-sm font-bold mt-2"></p>
+                </div>
+            </div>
+
+            <div id="admin-wait-msg" class="hidden text-center p-10 text-slate-400 italic">
+                Oyuncuların link göndermesi bekleniyor...
+            </div>
+        </section>
+
+        <!-- VOTING -->
+        <section id="voting-screen" class="hidden w-full h-full flex flex-col">
+            <div class="text-center mb-6">
+                <div class="inline-flex items-center gap-3 glass-card px-6 py-2 rounded-full shadow-lg">
+                    <span class="animate-pulse text-2xl">⏳</span>
+                    <span id="timer-display" class="text-3xl font-bold text-white font-mono">60</span>
+                </div>
+                <h2 class="text-white text-xl font-bold mt-4">Favorini Seç!</h2>
+            </div>
+
+            <div id="cards-grid"
+                class="flex-1 overflow-y-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-10">
+                <!-- Cards injected by JS with 'voting-card' class -->
+            </div>
+        </section>
+
+        <!-- RESULTS -->
+        <section id="results-screen" class="hidden w-full max-w-2xl text-center">
+            <h1
+                class="text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-yellow-200 mb-8 drop-shadow-lg filter drop-shadow-[0_0_10px_rgba(250,204,21,0.5)]">
+                🏆 SONUÇLAR 🏆</h1>
+            <div id="leaderboard" class="space-y-4">
+                <!-- Results -->
+            </div>
+            <button onclick="location.reload()" class="mt-8 btn-neon py-3 px-10 rounded-full shadow-xl text-lg">
+                🔄 Yeni Tur
+            </button>
+        </section>
+
+    </main>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="client.js"></script>
+</body>
+
+</html>
