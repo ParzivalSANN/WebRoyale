@@ -560,6 +560,12 @@ function selectCharacter(id) {
     btnJoinRoom.classList.remove('opacity-50', 'cursor-not-allowed');
 }
 
+function selectRandomCharacter() {
+    const r = Math.floor(Math.random() * 50) + 1;
+    selectCharacter(r);
+}
+
+
 // Hook up correct ID generation in Create/Join functions
 // Redefining them here slightly to capture mySessionId
 const originalCreateRoom = createRoom;
